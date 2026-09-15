@@ -1,7 +1,7 @@
 {
   "name": "slash-music-bot",
   "version": "1.0.0",
-  "description": "",
+  "description": "Discord Music Bot",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
@@ -16,6 +16,7 @@
     "discord.js": "^14.25.1",
     "distube": "^5.2.3",
     "dotenv": "^17.2.3",
+    "express": "^4.21.0",
     "ffmpeg-static": "^5.3.0"
   }
 }
