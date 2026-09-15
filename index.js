@@ -1,6 +1,7 @@
 require("dotenv").config();
 
 const express = require("express");
+
 const {
   Client,
   GatewayIntentBits,
@@ -14,31 +15,31 @@ const { DisTube } = require("distube");
 const { SpotifyPlugin } = require("@distube/spotify");
 const { YtDlpPlugin } = require("@distube/yt-dlp");
 
-// ==============================
-// ENV
-// ==============================
+// ==================================================
+// ENVIRONMENT VARIABLES
+// ==================================================
 
 const TOKEN = process.env.TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
 
 if (!TOKEN) {
-  console.error("❌ TOKEN is missing.");
+  console.error("❌ TOKEN is missing!");
   process.exit(1);
 }
 
 if (!CLIENT_ID) {
-  console.error("❌ CLIENT_ID is missing.");
+  console.error("❌ CLIENT_ID is missing!");
   process.exit(1);
 }
 
-// ==============================
-// EXPRESS SERVER
-// ==============================
+// ==================================================
+// EXPRESS SERVER - RENDER
+// ==================================================
 
 const app = express();
 
 app.get("/", (req, res) => {
-  res.send("🎵 Discord Music Bot is Online!");
+  res.send("🎵 Music Bot is Online!");
 });
 
 app.get("/health", (req, res) => {
@@ -54,9 +55,9 @@ app.listen(PORT, () => {
   console.log(`🌐 Web server running on port ${PORT}`);
 });
 
-// ==============================
+// ==================================================
 // DISCORD CLIENT
-// ==============================
+// ==================================================
 
 const client = new Client({
   intents: [
@@ -65,32 +66,35 @@ const client = new Client({
   ]
 });
 
-// ==============================
+// ==================================================
 // DISTUBE
-// ==============================
+// ==================================================
 
 const distube = new DisTube(client, {
   plugins: [
     new SpotifyPlugin(),
+
+    // IMPORTANT:
+    // yt-dlp plugin must be last
     new YtDlpPlugin({
       update: true
     })
   ]
 });
 
-// ==============================
-// COMMANDS
-// ==============================
+// ==================================================
+// SLASH COMMANDS
+// ==================================================
 
 const commands = [
 
   new SlashCommandBuilder()
     .setName("play")
-    .setDescription("🎵 Play a song")
+    .setDescription("🎵 Play music")
     .addStringOption(option =>
       option
         .setName("song")
-        .setDescription("Song name, YouTube URL or Spotify URL")
+        .setDescription("Song name or music URL")
         .setRequired(true)
     ),
 
@@ -112,7 +116,7 @@ const commands = [
 
   new SlashCommandBuilder()
     .setName("queue")
-    .setDescription("📜 Show queue"),
+    .setDescription("📜 Show music queue"),
 
   new SlashCommandBuilder()
     .setName("nowplaying")
@@ -120,9 +124,9 @@ const commands = [
 
 ].map(command => command.toJSON());
 
-// ==============================
+// ==================================================
 // REGISTER COMMANDS
-// ==============================
+// ==================================================
 
 async function registerCommands() {
 
@@ -141,28 +145,28 @@ async function registerCommands() {
       }
     );
 
-    console.log("✅ Slash commands registered.");
+    console.log("✅ Slash commands registered!");
 
   } catch (error) {
 
-    console.error("❌ Command registration failed:");
+    console.error("❌ COMMAND REGISTRATION ERROR:");
     console.error(error);
 
   }
 
 }
 
-// ==============================
-// READY
-// ==============================
+// ==================================================
+// BOT READY
+// ==================================================
 
 client.once("ready", async () => {
 
-  console.log("--------------------------------");
-  console.log(`🤖 Logged in as ${client.user.tag}`);
+  console.log("================================");
+  console.log(`🤖 Bot: ${client.user.tag}`);
   console.log(`🏠 Servers: ${client.guilds.cache.size}`);
-  console.log("🎵 Music system ready");
-  console.log("--------------------------------");
+  console.log("🎵 Music system loaded");
+  console.log("================================");
 
   client.user.setActivity("/play | Music", {
     type: 2
@@ -172,19 +176,22 @@ client.once("ready", async () => {
 
 });
 
-// ==============================
-// INTERACTIONS
-// ==============================
+// ==================================================
+// INTERACTION HANDLER
+// ==================================================
 
 client.on("interactionCreate", async interaction => {
 
-  if (!interaction.isChatInputCommand()) return;
+  if (!interaction.isChatInputCommand()) {
+    return;
+  }
 
-  const voiceChannel = interaction.member?.voice?.channel;
+  // ==================================================
+  // VOICE CHANNEL CHECK
+  // ==================================================
 
-  // ============================
-  // VOICE CHECK
-  // ============================
+  const voiceChannel =
+    interaction.member?.voice?.channel;
 
   if (!voiceChannel) {
 
@@ -197,17 +204,23 @@ client.on("interactionCreate", async interaction => {
 
   try {
 
-    // ============================
+    // ==================================================
     // PLAY
-    // ============================
+    // ==================================================
 
     if (interaction.commandName === "play") {
 
-      const song = interaction.options.getString("song");
+      const song =
+        interaction.options.getString("song");
 
       await interaction.deferReply();
 
-      console.log(`🎵 Play request: ${song}`);
+      console.log("================================");
+      console.log("🎵 PLAY REQUEST");
+      console.log(`🔎 Query: ${song}`);
+      console.log(`👤 User: ${interaction.user.tag}`);
+      console.log(`🔊 Voice: ${voiceChannel.name}`);
+      console.log("================================");
 
       await distube.play(
         voiceChannel,
@@ -225,13 +238,14 @@ client.on("interactionCreate", async interaction => {
       return;
     }
 
-    // ============================
+    // ==================================================
     // SKIP
-    // ============================
+    // ==================================================
 
     if (interaction.commandName === "skip") {
 
-      const queue = distube.getQueue(interaction.guildId);
+      const queue =
+        distube.getQueue(interaction.guildId);
 
       if (!queue) {
 
@@ -244,16 +258,19 @@ client.on("interactionCreate", async interaction => {
 
       await distube.skip(interaction.guildId);
 
-      return interaction.reply("⏭️ **Skipped!**");
+      return interaction.reply(
+        "⏭️ **Skipped!**"
+      );
     }
 
-    // ============================
+    // ==================================================
     // STOP
-    // ============================
+    // ==================================================
 
     if (interaction.commandName === "stop") {
 
-      const queue = distube.getQueue(interaction.guildId);
+      const queue =
+        distube.getQueue(interaction.guildId);
 
       if (!queue) {
 
@@ -267,17 +284,18 @@ client.on("interactionCreate", async interaction => {
       await distube.stop(interaction.guildId);
 
       return interaction.reply(
-        "⏹️ **Music stopped and queue cleared.**"
+        "⏹️ **Music stopped. Queue cleared.**"
       );
     }
 
-    // ============================
+    // ==================================================
     // PAUSE
-    // ============================
+    // ==================================================
 
     if (interaction.commandName === "pause") {
 
-      const queue = distube.getQueue(interaction.guildId);
+      const queue =
+        distube.getQueue(interaction.guildId);
 
       if (!queue) {
 
@@ -299,16 +317,19 @@ client.on("interactionCreate", async interaction => {
 
       await distube.pause(interaction.guildId);
 
-      return interaction.reply("⏸️ **Paused!**");
+      return interaction.reply(
+        "⏸️ **Paused!**"
+      );
     }
 
-    // ============================
+    // ==================================================
     // RESUME
-    // ============================
+    // ==================================================
 
     if (interaction.commandName === "resume") {
 
-      const queue = distube.getQueue(interaction.guildId);
+      const queue =
+        distube.getQueue(interaction.guildId);
 
       if (!queue) {
 
@@ -330,16 +351,19 @@ client.on("interactionCreate", async interaction => {
 
       await distube.resume(interaction.guildId);
 
-      return interaction.reply("▶️ **Resumed!**");
+      return interaction.reply(
+        "▶️ **Resumed!**"
+      );
     }
 
-    // ============================
+    // ==================================================
     // QUEUE
-    // ============================
+    // ==================================================
 
     if (interaction.commandName === "queue") {
 
-      const queue = distube.getQueue(interaction.guildId);
+      const queue =
+        distube.getQueue(interaction.guildId);
 
       if (!queue) {
 
@@ -352,37 +376,43 @@ client.on("interactionCreate", async interaction => {
 
       let text = "";
 
-      queue.songs.slice(0, 10).forEach((song, index) => {
+      queue.songs
+        .slice(0, 10)
+        .forEach((song, index) => {
 
-        if (index === 0) {
+          if (index === 0) {
 
-          text += `🎵 **Now:** ${song.name}\n\n`;
+            text +=
+              `🎵 **Now:** ${song.name}\n\n`;
 
-        } else {
+          } else {
 
-          text += `${index}. ${song.name}\n`;
+            text +=
+              `${index}. ${song.name}\n`;
 
-        }
+          }
 
-      });
+        });
 
-      const embed = new EmbedBuilder()
-        .setTitle("🎵 Music Queue")
-        .setDescription(text)
-        .setColor(0x5865F2);
+      const embed =
+        new EmbedBuilder()
+          .setTitle("🎵 Music Queue")
+          .setDescription(text || "Queue is empty.")
+          .setColor(0x5865F2);
 
       return interaction.reply({
         embeds: [embed]
       });
     }
 
-    // ============================
+    // ==================================================
     // NOW PLAYING
-    // ============================
+    // ==================================================
 
     if (interaction.commandName === "nowplaying") {
 
-      const queue = distube.getQueue(interaction.guildId);
+      const queue =
+        distube.getQueue(interaction.guildId);
 
       if (!queue) {
 
@@ -393,17 +423,21 @@ client.on("interactionCreate", async interaction => {
 
       }
 
-      const song = queue.songs[0];
+      const song =
+        queue.songs[0];
 
-      const embed = new EmbedBuilder()
-        .setTitle("🎶 Now Playing")
-        .setDescription(`**${song.name}**`)
-        .addFields({
-          name: "⏱️ Duration",
-          value: song.formattedDuration || "Unknown",
-          inline: true
-        })
-        .setColor(0x5865F2);
+      const embed =
+        new EmbedBuilder()
+          .setTitle("🎶 Now Playing")
+          .setDescription(`**${song.name}**`)
+          .addFields({
+            name: "⏱️ Duration",
+            value:
+              song.formattedDuration ||
+              "Unknown",
+            inline: true
+          })
+          .setColor(0x5865F2);
 
       if (song.thumbnail) {
         embed.setThumbnail(song.thumbnail);
@@ -420,25 +454,35 @@ client.on("interactionCreate", async interaction => {
 
   } catch (error) {
 
-    console.error("❌ PLAYBACK ERROR:");
+    console.error("================================");
+    console.error("❌ PLAYBACK ERROR");
     console.error(error);
+    console.error("================================");
 
-    let errorMessage = "❌ **Music error occurred.**";
+    let message =
+      "❌ **Music error occurred.**";
 
     if (error?.message) {
-      errorMessage += `\n\`\`\`\n${error.message.slice(0, 1000)}\n\`\`\``;
+
+      message +=
+        `\n\`\`\`\n${error.message.slice(0, 1500)}\n\`\`\``;
+
     }
 
     if (interaction.deferred) {
 
-      await interaction.editReply(errorMessage).catch(() => {});
+      await interaction
+        .editReply(message)
+        .catch(() => {});
 
     } else if (!interaction.replied) {
 
-      await interaction.reply({
-        content: errorMessage,
-        ephemeral: true
-      }).catch(() => {});
+      await interaction
+        .reply({
+          content: message,
+          ephemeral: true
+        })
+        .catch(() => {});
 
     }
 
@@ -446,20 +490,27 @@ client.on("interactionCreate", async interaction => {
 
 });
 
-// ==============================
-// DISTUBE EVENTS
-// ==============================
+// ==================================================
+// DISTUBE - PLAY SONG
+// ==================================================
 
 distube.on("playSong", (queue, song) => {
 
-  console.log(`🎵 NOW PLAYING: ${song.name}`);
+  console.log("================================");
+  console.log("🎵 NOW PLAYING");
+  console.log(`🎶 ${song.name}`);
+  console.log(`🔗 ${song.url || "No URL"}`);
+  console.log("================================");
 
-  if (!queue.textChannel) return;
+  if (!queue.textChannel) {
+    return;
+  }
 
-  const embed = new EmbedBuilder()
-    .setTitle("🎵 Now Playing")
-    .setDescription(`**${song.name}**`)
-    .setColor(0x57F287);
+  const embed =
+    new EmbedBuilder()
+      .setTitle("🎵 Now Playing")
+      .setDescription(`**${song.name}**`)
+      .setColor(0x57F287);
 
   if (song.thumbnail) {
     embed.setThumbnail(song.thumbnail);
@@ -473,23 +524,39 @@ distube.on("playSong", (queue, song) => {
 
 });
 
+// ==================================================
+// DISTUBE - ADD SONG
+// ==================================================
+
 distube.on("addSong", (queue, song) => {
 
-  console.log(`➕ Added: ${song.name}`);
+  console.log("➕ SONG ADDED");
+  console.log(song.name);
 
-  if (!queue.textChannel) return;
+  if (!queue.textChannel) {
+    return;
+  }
 
   queue.textChannel
-    .send(`➕ **Added to queue:** ${song.name}`)
+    .send(
+      `➕ **Added to queue:** ${song.name}`
+    )
     .catch(() => {});
 
 });
 
+// ==================================================
+// DISTUBE - PLAYLIST
+// ==================================================
+
 distube.on("addList", (queue, playlist) => {
 
-  console.log(`📚 Playlist: ${playlist.name}`);
+  console.log("📚 PLAYLIST ADDED");
+  console.log(playlist.name);
 
-  if (!queue.textChannel) return;
+  if (!queue.textChannel) {
+    return;
+  }
 
   queue.textChannel
     .send(
@@ -500,11 +567,17 @@ distube.on("addList", (queue, playlist) => {
 
 });
 
+// ==================================================
+// DISTUBE - FINISH
+// ==================================================
+
 distube.on("finish", queue => {
 
-  console.log("✅ Queue finished.");
+  console.log("✅ QUEUE FINISHED");
 
-  if (!queue.textChannel) return;
+  if (!queue.textChannel) {
+    return;
+  }
 
   queue.textChannel
     .send("✅ **Queue finished!**")
@@ -512,32 +585,44 @@ distube.on("finish", queue => {
 
 });
 
+// ==================================================
+// DISTUBE - EMPTY
+// ==================================================
+
 distube.on("empty", queue => {
 
-  console.log("👋 Voice channel is empty.");
+  console.log("👋 VOICE CHANNEL EMPTY");
 
-  if (!queue.textChannel) return;
+  if (!queue.textChannel) {
+    return;
+  }
 
   queue.textChannel
-    .send("👋 **Everyone left the voice channel.**")
+    .send(
+      "👋 **Everyone left the voice channel.**"
+    )
     .catch(() => {});
 
 });
 
-// ==============================
-// IMPORTANT ERROR LOG
-// ==============================
+// ==================================================
+// DISTUBE ERROR
+// ==================================================
 
 distube.on("error", (channel, error) => {
 
-  console.error("❌ DISTUBE ERROR:");
+  console.error("================================");
+  console.error("❌ DISTUBE ERROR");
   console.error(error);
+  console.error("================================");
 
   if (channel) {
 
     channel
       .send(
-        `❌ **Music error:**\n\`\`\`\n${error?.message || error}\n\`\`\``
+        `❌ **Music error:**\n\`\`\`\n${
+          error?.message || error
+        }\n\`\`\``
       )
       .catch(() => {});
 
@@ -545,33 +630,37 @@ distube.on("error", (channel, error) => {
 
 });
 
-// ==============================
-// DISCORD ERRORS
-// ==============================
+// ==================================================
+// DISCORD ERROR
+// ==================================================
 
 client.on("error", error => {
 
-  console.error("❌ Discord Client Error:");
+  console.error("❌ DISCORD ERROR:");
   console.error(error);
 
 });
 
+// ==================================================
+// UNHANDLED ERRORS
+// ==================================================
+
 process.on("unhandledRejection", error => {
 
-  console.error("❌ Unhandled Rejection:");
+  console.error("❌ UNHANDLED REJECTION:");
   console.error(error);
 
 });
 
 process.on("uncaughtException", error => {
 
-  console.error("❌ Uncaught Exception:");
+  console.error("❌ UNCAUGHT EXCEPTION:");
   console.error(error);
 
 });
 
-// ==============================
+// ==================================================
 // LOGIN
-// ==============================
+// ==================================================
 
 client.login(TOKEN);
