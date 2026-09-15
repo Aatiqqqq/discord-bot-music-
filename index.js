@@ -1,3 +1,4 @@
+```js
 require("dotenv").config();
 
 const express = require("express");
@@ -11,10 +12,9 @@ const {
 
 const { DisTube } = require("distube");
 const { SoundCloudPlugin } = require("@distube/soundcloud");
-const { SpotifyPlugin } = require("@tireoz/spotify");
 
 // =========================
-// EXPRESS SERVER
+// EXPRESS
 // =========================
 
 const app = express();
@@ -28,7 +28,6 @@ app.get("/health", (req, res) => {
   res.json({
     status: "online",
     bot: "music",
-    time: new Date().toISOString(),
   });
 });
 
@@ -37,24 +36,24 @@ app.listen(PORT, () => {
 });
 
 // =========================
-// ENVIRONMENT
+// ENV
 // =========================
 
 const TOKEN = process.env.TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
 
 if (!TOKEN) {
-  console.error("❌ TOKEN environment variable is missing.");
+  console.error("❌ TOKEN is missing.");
   process.exit(1);
 }
 
 if (!CLIENT_ID) {
-  console.error("❌ CLIENT_ID environment variable is missing.");
+  console.error("❌ CLIENT_ID is missing.");
   process.exit(1);
 }
 
 // =========================
-// DISCORD CLIENT
+// DISCORD
 // =========================
 
 const client = new Client({
@@ -71,48 +70,47 @@ const client = new Client({
 const distube = new DisTube(client, {
   plugins: [
     new SoundCloudPlugin(),
-    new SpotifyPlugin(),
   ],
 });
 
 // =========================
-// SLASH COMMANDS
+// COMMANDS
 // =========================
 
 const commands = [
   new SlashCommandBuilder()
     .setName("play")
-    .setDescription("Play a song or Spotify/SoundCloud link")
+    .setDescription("Play a song from SoundCloud")
     .addStringOption((option) =>
       option
         .setName("song")
-        .setDescription("Song name or music link")
+        .setDescription("Song name or SoundCloud URL")
         .setRequired(true)
     ),
 
   new SlashCommandBuilder()
     .setName("skip")
-    .setDescription("Skip the current song"),
+    .setDescription("Skip current song"),
 
   new SlashCommandBuilder()
     .setName("stop")
-    .setDescription("Stop music and leave voice channel"),
+    .setDescription("Stop music"),
 
   new SlashCommandBuilder()
     .setName("pause")
-    .setDescription("Pause the current song"),
+    .setDescription("Pause music"),
 
   new SlashCommandBuilder()
     .setName("resume")
-    .setDescription("Resume the current song"),
+    .setDescription("Resume music"),
 
   new SlashCommandBuilder()
     .setName("queue")
-    .setDescription("Show the music queue"),
+    .setDescription("Show queue"),
 
   new SlashCommandBuilder()
     .setName("nowplaying")
-    .setDescription("Show the current song"),
+    .setDescription("Show current song"),
 ].map((command) => command.toJSON());
 
 // =========================
@@ -123,36 +121,37 @@ async function registerCommands() {
   try {
     const rest = new REST({ version: "10" }).setToken(TOKEN);
 
-    console.log("🔄 Registering slash commands...");
+    console.log("🔄 Registering commands...");
 
     await rest.put(
       Routes.applicationCommands(CLIENT_ID),
-      { body: commands }
+      {
+        body: commands,
+      }
     );
 
-    console.log("✅ Slash commands registered.");
+    console.log("✅ Commands registered.");
   } catch (error) {
-    console.error("❌ Command registration error:");
+    console.error("❌ Command registration failed:");
     console.error(error);
   }
 }
 
 // =========================
-// BOT READY
+// READY
 // =========================
 
 client.once("ready", async () => {
-  console.log("=================================");
+  console.log("================================");
   console.log(`🤖 Logged in as ${client.user.tag}`);
-  console.log(`🆔 Bot ID: ${client.user.id}`);
-  console.log("🎵 Music system ready");
-  console.log("=================================");
+  console.log("🎵 Music bot ready");
+  console.log("================================");
 
   await registerCommands();
 });
 
 // =========================
-// /PLAY
+// INTERACTIONS
 // =========================
 
 client.on("interactionCreate", async (interaction) => {
@@ -160,18 +159,17 @@ client.on("interactionCreate", async (interaction) => {
 
   const command = interaction.commandName;
 
-  // -------------------------
+  // ========================
   // PLAY
-  // -------------------------
+  // ========================
 
   if (command === "play") {
     const song = interaction.options.getString("song");
-
     const voiceChannel = interaction.member.voice.channel;
 
     if (!voiceChannel) {
       return interaction.reply({
-        content: "❌ Pehle kisi voice channel mein join karo.",
+        content: "❌ Pehle voice channel join karo.",
         ephemeral: true,
       });
     }
@@ -180,14 +178,14 @@ client.on("interactionCreate", async (interaction) => {
 
     if (!permissions?.has("Connect")) {
       return interaction.reply({
-        content: "❌ Mere paas **Connect** permission nahi hai.",
+        content: "❌ Mere paas Connect permission nahi hai.",
         ephemeral: true,
       });
     }
 
     if (!permissions?.has("Speak")) {
       return interaction.reply({
-        content: "❌ Mere paas **Speak** permission nahi hai.",
+        content: "❌ Mere paas Speak permission nahi hai.",
         ephemeral: true,
       });
     }
@@ -195,12 +193,12 @@ client.on("interactionCreate", async (interaction) => {
     await interaction.deferReply();
 
     try {
-      console.log("=================================");
+      console.log("================================");
       console.log("🎵 PLAY REQUEST");
-      console.log(`👤 User: ${interaction.user.tag}`);
-      console.log(`🔎 Search: ${song}`);
-      console.log(`🔊 Channel: ${voiceChannel.name}`);
-      console.log("=================================");
+      console.log(`User: ${interaction.user.tag}`);
+      console.log(`Search: ${song}`);
+      console.log(`Channel: ${voiceChannel.name}`);
+      console.log("================================");
 
       await distube.play(voiceChannel, song, {
         member: interaction.member,
@@ -208,210 +206,183 @@ client.on("interactionCreate", async (interaction) => {
       });
 
       await interaction.editReply(
-        `🎵 **Requested:** ${song}`
+        `🎵 Searching/playing: **${song}**`
       );
 
     } catch (error) {
       console.error("❌ PLAY ERROR:");
       console.error(error);
 
-      const message =
-        error?.message ||
-        "Music play karte waqt unknown error aa gaya.";
-
       await interaction.editReply(
-        `❌ **Music play nahi ho saki.**\n\`${message.slice(0, 1500)}\``
+        `❌ Music play nahi ho saki.\n\`${String(
+          error.message || error
+        ).slice(0, 1500)}\``
       );
     }
   }
 
-  // -------------------------
+  // ========================
   // SKIP
-  // -------------------------
+  // ========================
 
   else if (command === "skip") {
+    const queue = distube.getQueue(interaction.guildId);
+
+    if (!queue) {
+      return interaction.reply("❌ Kuch play nahi ho raha.");
+    }
+
     try {
-      const queue = distube.getQueue(interaction.guildId);
-
-      if (!queue) {
-        return interaction.reply("❌ Abhi koi music nahi chal raha.");
-      }
-
       await queue.skip();
-
       await interaction.reply("⏭️ **Skipped!**");
     } catch (error) {
-      console.error(error);
-
       await interaction.reply(
-        `❌ Skip nahi ho saka: ${error.message}`
+        `❌ Skip failed: ${error.message}`
       );
     }
   }
 
-  // -------------------------
+  // ========================
   // STOP
-  // -------------------------
+  // ========================
 
   else if (command === "stop") {
+    const queue = distube.getQueue(interaction.guildId);
+
+    if (!queue) {
+      return interaction.reply("❌ Kuch play nahi ho raha.");
+    }
+
     try {
-      const queue = distube.getQueue(interaction.guildId);
-
-      if (!queue) {
-        return interaction.reply("❌ Abhi koi music nahi chal raha.");
-      }
-
       queue.stop();
-
       await interaction.reply("⏹️ **Music stopped.**");
     } catch (error) {
-      console.error(error);
-
       await interaction.reply(
-        `❌ Stop nahi ho saka: ${error.message}`
+        `❌ Stop failed: ${error.message}`
       );
     }
   }
 
-  // -------------------------
+  // ========================
   // PAUSE
-  // -------------------------
+  // ========================
 
   else if (command === "pause") {
+    const queue = distube.getQueue(interaction.guildId);
+
+    if (!queue) {
+      return interaction.reply("❌ Kuch play nahi ho raha.");
+    }
+
     try {
-      const queue = distube.getQueue(interaction.guildId);
-
-      if (!queue) {
-        return interaction.reply("❌ Abhi koi music nahi chal raha.");
-      }
-
       if (queue.paused) {
-        return interaction.reply("⏸️ Music already paused hai.");
+        return interaction.reply("⏸️ Already paused hai.");
       }
 
       queue.pause();
 
-      await interaction.reply("⏸️ **Music paused.**");
+      await interaction.reply("⏸️ **Paused.**");
     } catch (error) {
-      console.error(error);
-
       await interaction.reply(
-        `❌ Pause nahi ho saka: ${error.message}`
+        `❌ Pause failed: ${error.message}`
       );
     }
   }
 
-  // -------------------------
+  // ========================
   // RESUME
-  // -------------------------
+  // ========================
 
   else if (command === "resume") {
+    const queue = distube.getQueue(interaction.guildId);
+
+    if (!queue) {
+      return interaction.reply("❌ Kuch play nahi ho raha.");
+    }
+
     try {
-      const queue = distube.getQueue(interaction.guildId);
-
-      if (!queue) {
-        return interaction.reply("❌ Abhi koi music nahi chal raha.");
-      }
-
       if (!queue.paused) {
-        return interaction.reply("▶️ Music already playing hai.");
+        return interaction.reply("▶️ Already playing hai.");
       }
 
       queue.resume();
 
-      await interaction.reply("▶️ **Music resumed.**");
+      await interaction.reply("▶️ **Resumed.**");
     } catch (error) {
-      console.error(error);
-
       await interaction.reply(
-        `❌ Resume nahi ho saka: ${error.message}`
+        `❌ Resume failed: ${error.message}`
       );
     }
   }
 
-  // -------------------------
+  // ========================
   // QUEUE
-  // -------------------------
+  // ========================
 
   else if (command === "queue") {
-    try {
-      const queue = distube.getQueue(interaction.guildId);
+    const queue = distube.getQueue(interaction.guildId);
 
-      if (!queue) {
-        return interaction.reply("📭 Queue empty hai.");
-      }
-
-      const songs = queue.songs;
-
-      let text = "🎵 **Music Queue**\n\n";
-
-      songs.slice(0, 10).forEach((song, index) => {
-        if (index === 0) {
-          text += `▶️ **Now:** ${song.name}\n`;
-        } else {
-          text += `${index}. ${song.name}\n`;
-        }
-      });
-
-      if (songs.length > 10) {
-        text += `\n...and ${songs.length - 10} more.`;
-      }
-
-      await interaction.reply(text);
-    } catch (error) {
-      console.error(error);
-
-      await interaction.reply(
-        `❌ Queue nahi mil saki: ${error.message}`
-      );
+    if (!queue || !queue.songs.length) {
+      return interaction.reply("📭 Queue empty hai.");
     }
+
+    let message = "🎵 **Music Queue**\n\n";
+
+    queue.songs.slice(0, 10).forEach((song, index) => {
+      if (index === 0) {
+        message += `▶️ **Now:** ${song.name}\n`;
+      } else {
+        message += `${index}. ${song.name}\n`;
+      }
+    });
+
+    if (queue.songs.length > 10) {
+      message += `\n...and ${
+        queue.songs.length - 10
+      } more.`;
+    }
+
+    await interaction.reply(message);
   }
 
-  // -------------------------
+  // ========================
   // NOW PLAYING
-  // -------------------------
+  // ========================
 
   else if (command === "nowplaying") {
-    try {
-      const queue = distube.getQueue(interaction.guildId);
+    const queue = distube.getQueue(interaction.guildId);
 
-      if (!queue || !queue.songs.length) {
-        return interaction.reply("📭 Abhi kuch play nahi ho raha.");
-      }
-
-      const song = queue.songs[0];
-
-      await interaction.reply(
-        `🎵 **Now Playing**\n\n` +
-        `**${song.name}**\n` +
-        `⏱️ ${song.formattedDuration || "Unknown"}`
-      );
-    } catch (error) {
-      console.error(error);
-
-      await interaction.reply(
-        `❌ Current song nahi mil saki: ${error.message}`
+    if (!queue || !queue.songs.length) {
+      return interaction.reply(
+        "📭 Abhi kuch play nahi ho raha."
       );
     }
+
+    const song = queue.songs[0];
+
+    await interaction.reply(
+      `🎵 **Now Playing**\n\n` +
+      `**${song.name}**\n` +
+      `⏱️ ${song.formattedDuration || "Unknown"}`
+    );
   }
 });
 
 // =========================
-// DISTUBE EVENTS
+// EVENTS
 // =========================
 
 distube.on("playSong", (queue, song) => {
-  console.log("=================================");
+  console.log("================================");
   console.log("🎵 NOW PLAYING");
   console.log(`🎶 ${song.name}`);
   console.log(`⏱️ ${song.formattedDuration}`);
-  console.log(`🌐 ${song.url}`);
-  console.log("=================================");
+  console.log("================================");
 
   if (queue.textChannel) {
-    queue.textChannel.send(
-      `🎵 **Now Playing:** ${song.name}`
-    ).catch(() => {});
+    queue.textChannel
+      .send(`🎵 **Now Playing:** ${song.name}`)
+      .catch(() => {});
   }
 });
 
@@ -420,22 +391,22 @@ distube.on("addSong", (queue, song) => {
 });
 
 distube.on("addList", (queue, playlist) => {
-  console.log(`📃 Playlist added: ${playlist.name}`);
+  console.log(`📃 Playlist: ${playlist.name}`);
 });
 
-distube.on("finish", (queue) => {
+distube.on("finish", () => {
   console.log("🏁 Queue finished.");
 });
 
-distube.on("empty", (queue) => {
+distube.on("empty", () => {
   console.log("🔊 Voice channel empty.");
 });
 
 distube.on("error", (channel, error) => {
-  console.error("=================================");
+  console.error("================================");
   console.error("❌ DISTUBE ERROR");
   console.error(error);
-  console.error("=================================");
+  console.error("================================");
 });
 
 distube.on("debug", (message) => {
@@ -450,3 +421,4 @@ client.login(TOKEN).catch((error) => {
   console.error("❌ Discord login failed:");
   console.error(error);
 });
+```
