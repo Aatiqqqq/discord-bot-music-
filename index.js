@@ -32,7 +32,7 @@ if (!CLIENT_ID) {
 }
 
 // ==============================
-// EXPRESS SERVER FOR RENDER
+// EXPRESS SERVER
 // ==============================
 
 const app = express();
@@ -44,7 +44,7 @@ app.get("/", (req, res) => {
 app.get("/health", (req, res) => {
   res.json({
     status: "online",
-    bot: client.user ? client.user.tag : "starting"
+    bot: client?.user?.tag || "starting"
   });
 });
 
@@ -72,25 +72,25 @@ const client = new Client({
 const distube = new DisTube(client, {
   plugins: [
     new SpotifyPlugin(),
-    new YtDlpPlugin()
+    new YtDlpPlugin({
+      update: true
+    })
   ]
 });
 
-client.distube = distube;
-
 // ==============================
-// SLASH COMMANDS
+// COMMANDS
 // ==============================
 
 const commands = [
 
   new SlashCommandBuilder()
     .setName("play")
-    .setDescription("🎵 Play music")
+    .setDescription("🎵 Play a song")
     .addStringOption(option =>
       option
         .setName("song")
-        .setDescription("Song name or URL")
+        .setDescription("Song name, YouTube URL or Spotify URL")
         .setRequired(true)
     ),
 
@@ -112,7 +112,7 @@ const commands = [
 
   new SlashCommandBuilder()
     .setName("queue")
-    .setDescription("📜 Show music queue"),
+    .setDescription("📜 Show queue"),
 
   new SlashCommandBuilder()
     .setName("nowplaying")
@@ -125,11 +125,14 @@ const commands = [
 // ==============================
 
 async function registerCommands() {
+
   try {
 
     console.log("🔄 Registering slash commands...");
 
-    const rest = new REST({ version: "10" }).setToken(TOKEN);
+    const rest = new REST({
+      version: "10"
+    }).setToken(TOKEN);
 
     await rest.put(
       Routes.applicationCommands(CLIENT_ID),
@@ -146,10 +149,11 @@ async function registerCommands() {
     console.error(error);
 
   }
+
 }
 
 // ==============================
-// BOT READY
+// READY
 // ==============================
 
 client.once("ready", async () => {
@@ -178,6 +182,10 @@ client.on("interactionCreate", async interaction => {
 
   const voiceChannel = interaction.member?.voice?.channel;
 
+  // ============================
+  // VOICE CHECK
+  // ============================
+
   if (!voiceChannel) {
 
     return interaction.reply({
@@ -189,15 +197,17 @@ client.on("interactionCreate", async interaction => {
 
   try {
 
-    // ==========================
+    // ============================
     // PLAY
-    // ==========================
+    // ============================
 
     if (interaction.commandName === "play") {
 
       const song = interaction.options.getString("song");
 
       await interaction.deferReply();
+
+      console.log(`🎵 Play request: ${song}`);
 
       await distube.play(
         voiceChannel,
@@ -209,15 +219,15 @@ client.on("interactionCreate", async interaction => {
       );
 
       await interaction.editReply(
-        `🎵 **Playing:** ${song}`
+        `🔎 **Searching:** ${song}`
       );
 
       return;
     }
 
-    // ==========================
+    // ============================
     // SKIP
-    // ==========================
+    // ============================
 
     if (interaction.commandName === "skip") {
 
@@ -237,9 +247,9 @@ client.on("interactionCreate", async interaction => {
       return interaction.reply("⏭️ **Skipped!**");
     }
 
-    // ==========================
+    // ============================
     // STOP
-    // ==========================
+    // ============================
 
     if (interaction.commandName === "stop") {
 
@@ -261,9 +271,9 @@ client.on("interactionCreate", async interaction => {
       );
     }
 
-    // ==========================
+    // ============================
     // PAUSE
-    // ==========================
+    // ============================
 
     if (interaction.commandName === "pause") {
 
@@ -292,9 +302,9 @@ client.on("interactionCreate", async interaction => {
       return interaction.reply("⏸️ **Paused!**");
     }
 
-    // ==========================
+    // ============================
     // RESUME
-    // ==========================
+    // ============================
 
     if (interaction.commandName === "resume") {
 
@@ -323,9 +333,9 @@ client.on("interactionCreate", async interaction => {
       return interaction.reply("▶️ **Resumed!**");
     }
 
-    // ==========================
+    // ============================
     // QUEUE
-    // ==========================
+    // ============================
 
     if (interaction.commandName === "queue") {
 
@@ -345,9 +355,13 @@ client.on("interactionCreate", async interaction => {
       queue.songs.slice(0, 10).forEach((song, index) => {
 
         if (index === 0) {
+
           text += `🎵 **Now:** ${song.name}\n\n`;
+
         } else {
+
           text += `${index}. ${song.name}\n`;
+
         }
 
       });
@@ -362,9 +376,9 @@ client.on("interactionCreate", async interaction => {
       });
     }
 
-    // ==========================
+    // ============================
     // NOW PLAYING
-    // ==========================
+    // ============================
 
     if (interaction.commandName === "nowplaying") {
 
@@ -406,20 +420,23 @@ client.on("interactionCreate", async interaction => {
 
   } catch (error) {
 
-    console.error("❌ MUSIC ERROR:");
+    console.error("❌ PLAYBACK ERROR:");
     console.error(error);
 
-    const message =
-      "❌ **Music error occurred.** Please try again.";
+    let errorMessage = "❌ **Music error occurred.**";
+
+    if (error?.message) {
+      errorMessage += `\n\`\`\`\n${error.message.slice(0, 1000)}\n\`\`\``;
+    }
 
     if (interaction.deferred) {
 
-      await interaction.editReply(message).catch(() => {});
+      await interaction.editReply(errorMessage).catch(() => {});
 
     } else if (!interaction.replied) {
 
       await interaction.reply({
-        content: message,
+        content: errorMessage,
         ephemeral: true
       }).catch(() => {});
 
@@ -435,7 +452,7 @@ client.on("interactionCreate", async interaction => {
 
 distube.on("playSong", (queue, song) => {
 
-  console.log(`🎵 Playing: ${song.name}`);
+  console.log(`🎵 NOW PLAYING: ${song.name}`);
 
   if (!queue.textChannel) return;
 
@@ -507,6 +524,10 @@ distube.on("empty", queue => {
 
 });
 
+// ==============================
+// IMPORTANT ERROR LOG
+// ==============================
+
 distube.on("error", (channel, error) => {
 
   console.error("❌ DISTUBE ERROR:");
@@ -515,7 +536,9 @@ distube.on("error", (channel, error) => {
   if (channel) {
 
     channel
-      .send("❌ **Music error.** Try another song.")
+      .send(
+        `❌ **Music error:**\n\`\`\`\n${error?.message || error}\n\`\`\``
+      )
       .catch(() => {});
 
   }
@@ -523,22 +546,28 @@ distube.on("error", (channel, error) => {
 });
 
 // ==============================
-// ERROR HANDLING
+// DISCORD ERRORS
 // ==============================
 
 client.on("error", error => {
+
   console.error("❌ Discord Client Error:");
   console.error(error);
+
 });
 
 process.on("unhandledRejection", error => {
+
   console.error("❌ Unhandled Rejection:");
   console.error(error);
+
 });
 
 process.on("uncaughtException", error => {
+
   console.error("❌ Uncaught Exception:");
   console.error(error);
+
 });
 
 // ==============================
